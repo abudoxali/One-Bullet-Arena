@@ -12,6 +12,12 @@ const mimeTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
+  // Baked sprite atlases. Without these the server falls back to
+  // application/octet-stream and the browser has to sniff the image, which
+  // Pages never has to do -- so dev and the Playwright gate would be testing
+  // a different content type from production.
+  ['.png', 'image/png'],
+  ['.webp', 'image/webp'],
   ['.svg', 'image/svg+xml'],
   ['.webmanifest', 'application/manifest+json; charset=utf-8'],
 ]);

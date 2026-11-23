@@ -69,6 +69,17 @@
   --ease-premium: cubic-bezier(.2, .75, .25, 1);
   --motion-fast: 140ms;
   --motion-normal: 190ms;
+
+  /* Motion & spring tokens (inspired by Animmaster Lib & Skiper UI) */
+  --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --ease-spring-soft: cubic-bezier(0.25, 1.15, 0.45, 1);
+  --ease-glide: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+
+  /* Depth & Glow tokens (inspired by Three UI & Skiper UI) */
+  --shadow-glow-cyan: 0 0 20px rgba(98, 213, 243, 0.28);
+  --shadow-glow-bullet: 0 0 24px rgba(255, 212, 65, 0.32);
+  --shadow-card-elevated: 0 22px 52px rgba(0, 0, 0, 0.44), 0 0 24px rgba(98, 213, 243, 0.12);
 }
 
 html[lang="ar"] {

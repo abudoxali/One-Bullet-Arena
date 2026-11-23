@@ -10,7 +10,7 @@ const APP_SHELL = [
   './manifest.webmanifest', './icons/app-icon.svg',
   './src/release-config.js', './src/release.js', './src/i18n.js', './src/main.js', './src/game.js',
   './src/performance/frame-pacer.js', './src/performance/quality-manager.js',
-  './src/render/canvas-viewport.js', './src/render/cinematic-combat-art.js', './src/render/combat-vfx.js', './src/ui/icons.js', './src/ui/dom-ui.js', './src/ui/dom-performance-bridge.js',
+  './src/render/canvas-viewport.js', './src/render/cinematic-combat-art.js', './src/render/sprite-atlas.js', './src/render/tileset-atlas.js', './src/render/combat-vfx.js', './src/ui/icons.js', './src/ui/dom-ui.js', './src/ui/dom-performance-bridge.js',
   './src/game-runtime.js', './src/polish-runtime.js', './src/movement-hotfix-runtime.js', './src/enemy-navigation.js', './src/game-feel.js',
   './src/visual-design-runtime.js', './src/combat-feedback-runtime.js', './src/ui-layout-runtime.js',
   './src/core/game-events.js', './src/core/event-bus.js', './src/core/game-states.js',
@@ -21,6 +21,12 @@ const APP_SHELL = [
   './src/core/ui-repair-runtime.js',
   './src/game-data.js', './src/arena.js', './src/audio.js', './src/input-controller.js',
   './src/spawn-system.js', './src/ui-renderer.js',
+  // Baked sprite atlases. These live under src/ rather than a top-level
+  // assets/ because deploy-pages.yml copies `src icons styles` and nothing
+  // else -- an atlas anywhere outside those three would work locally and
+  // 404 on Pages. tests/sprite-atlas.test.js holds that line.
+  './src/assets/sprites/scout.json', './src/assets/sprites/scout.png',
+  './src/assets/sprites/arena-tileset.json', './src/assets/sprites/arena-tileset.png',
 ];
 
 self.addEventListener('install', (event) => {

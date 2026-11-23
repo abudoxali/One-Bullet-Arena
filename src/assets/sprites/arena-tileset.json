@@ -1,0 +1,49 @@
+{
+  "image": "arena-tileset.png",
+  "pixelsPerUnit": 2,
+  "tile": 54,
+  "floorVariants": 4,
+  "wallHeight": 70,
+  "wallScreenHeight": 42.0,
+  "heightScale": 0.6,
+  "groundCompression": 0.8,
+  "filtering": "smooth",
+  "pieces": {
+    "floor0": {
+      "x": 0,
+      "y": 0,
+      "w": 108,
+      "h": 108
+    },
+    "floor1": {
+      "x": 108,
+      "y": 0,
+      "w": 108,
+      "h": 108
+    },
+    "floor2": {
+      "x": 216,
+      "y": 0,
+      "w": 108,
+      "h": 108
+    },
+    "floor3": {
+      "x": 324,
+      "y": 0,
+      "w": 108,
+      "h": 108
+    },
+    "wallTop": {
+      "x": 432,
+      "y": 0,
+      "w": 108,
+      "h": 108
+    },
+    "wallFace": {
+      "x": 0,
+      "y": 108,
+      "w": 108,
+      "h": 84
+    }
+  }
+}

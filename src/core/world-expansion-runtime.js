@@ -15,7 +15,30 @@ import { OneBulletDashboardPolishRuntime } from './dashboard-polish-runtime.js';
 
 export const WORLD_EXPANSION_RUNTIME_VERSION = '3.4.0-expanding-world';
 
-const CAMERA_ZOOMS = Object.freeze([1, 1, 1, 0.98, 0.94, 0.9, 0.86, 0.82]);
+/*
+ * Camera zoom per sector.
+ *
+ * The old curve ran 1.0 down to 0.82, which left an enemy 34 logical units
+ * across -- about 1.3% of the screen -- and no amount of art survives being
+ * drawn that small. This curve is the same shape pulled up.
+ *
+ * Sector 0 keeps the one property worth protecting: the 660x410 duel room
+ * fits the viewport whole, so the sector that teaches ricochets shows you
+ * both walls you are bouncing off.
+ *
+ * "Whole" now includes the perimeter wall. The floor alone fits up to 1.76,
+ * but the baked wall adds a 22 unit band on every side plus the near wall's
+ * 42 unit outer face, so the room is really 704x496 and the ceiling is 1.45.
+ * At 1.70 the walls were simply cropped off the top and bottom.
+ *
+ * Every later sector trades some field of view for readability. That is less
+ * of a change than it sounds: sectors 3 and up were already larger than the
+ * viewport at the old zoom (their fit ceilings are 0.89 and below), so the
+ * camera has always followed the player there. Sectors 1 and 2 are the only
+ * ones that genuinely stop fitting; at 1.42 and 1.34 roughly 78% of their
+ * width is in frame at any moment, and the minimap covers the rest.
+ */
+const CAMERA_ZOOMS = Object.freeze([1.42, 1.36, 1.3, 1.25, 1.21, 1.17, 1.14, 1.11]);
 // Exponential follow rate. 5.5 gave a ~180ms time constant; 12 gives ~83ms,
 // which keeps the camera under the player during direction changes.
 export const CAMERA_FOLLOW_RESPONSE = 12;

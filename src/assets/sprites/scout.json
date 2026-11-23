@@ -1,0 +1,51 @@
+{
+  "actor": "scout",
+  "image": "scout.png",
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "pixelsPerUnit": 2,
+  "anchorX": 64,
+  "anchorY": 76,
+  "columns": 16,
+  "rows": 16,
+  "directions": 8,
+  "radius": 17,
+  "filtering": "smooth",
+  "groundCompression": 0.8,
+  "screenAngles": [
+    -1.570796,
+    -0.674741,
+    -0.0,
+    0.674741,
+    1.570796,
+    2.466852,
+    3.141593,
+    -2.466852
+  ],
+  "states": {
+    "idle": {
+      "start": 0,
+      "frames": 6,
+      "fps": 8,
+      "loop": true
+    },
+    "run": {
+      "start": 48,
+      "frames": 14,
+      "fps": 20,
+      "loop": true
+    },
+    "hit": {
+      "start": 160,
+      "frames": 4,
+      "fps": 18,
+      "loop": false
+    },
+    "death": {
+      "start": 192,
+      "frames": 8,
+      "fps": 14,
+      "loop": false
+    }
+  }
+}

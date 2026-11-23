@@ -2,6 +2,7 @@ import { clamp, normalize } from '../arena.js';
 import { GAME_HEIGHT as HEIGHT, GAME_WIDTH as WIDTH } from '../game-data.js';
 import { RELEASE_VERSION } from '../release.js';
 import { UI_COLORS, polygon, roundedRect } from '../ui-renderer.js';
+import { TilesetAtlas, floorPieceName } from '../render/tileset-atlas.js';
 import { OneBulletWardenRuntime } from './warden-runtime.js';
 
 export const WORLD_2D_RUNTIME_VERSION = '3.2.0-true-2d';
@@ -72,6 +73,11 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     this.playerEchoes = [];
     this.echoCooldown = 0;
     this.renderFrame = 0;
+    // The baked map is additive: every floor and obstacle below keeps its
+    // procedural path and uses it until this resolves, or forever if the
+    // atlas cannot be fetched.
+    this.arenaTileset = new TilesetAtlas('arena-tileset', new URL('../assets/sprites/', import.meta.url));
+    this.arenaTileset.load();
   }
 
   update(dt) {
@@ -298,6 +304,8 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     roundedRect(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 14);
     ctx.clip();
 
+    const tiles = this.arenaTileset;
+    const baked = Boolean(tiles?.ready);
     const startX = Math.floor(bounds.x / TILE_SIZE) * TILE_SIZE;
     const startY = Math.floor(bounds.y / TILE_SIZE) * TILE_SIZE;
     for (let y = startY; y < bounds.y + bounds.h + TILE_SIZE; y += TILE_SIZE) {
@@ -305,6 +313,11 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
         const column = Math.floor(x / TILE_SIZE);
         const row = Math.floor(y / TILE_SIZE);
         const variant = floorTileVariant(column, row, stage);
+        if (baked) {
+          tiles.draw(ctx, floorPieceName(variant, tiles.manifest.floorVariants), x, y, TILE_SIZE, TILE_SIZE);
+          continue;
+        }
+
         const alpha = variant === 0 ? 0.19 : variant === 1 ? 0.11 : 0.07;
         ctx.fillStyle = variant === 3 ? `${accent.secondary}10` : `rgba(42, 60, 92, ${alpha})`;
         ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
@@ -316,6 +329,16 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
         ctx.fillStyle = 'rgba(214, 237, 255, 0.08)';
         ctx.fillRect(x + 5, y + 5, TILE_SIZE - 10, 1);
       }
+    }
+
+    if (baked) {
+      // The panels bake neutral so one atlas serves all eight sectors; the
+      // sector's own colour goes on here, as a wash rather than a fill, so
+      // the baked bevel lighting still shows through.
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = accent.secondary;
+      ctx.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
     }
     ctx.restore();
   }
@@ -458,7 +481,70 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     ctx.restore();
   }
 
+  /*
+   * A baked block: cast shadow, front face, top panel, lit cap.
+   *
+   * The rectangle is the TOP face and the front face hangs below its lower
+   * edge, which is the convention the procedural block already used, so
+   * collision keeps reading exactly where the player sees the surface they
+   * are standing against.
+   *
+   * Returns false when there is no usable tileset, so drawObstacle falls
+   * through to the procedural block in the same frame.
+   */
+  drawBakedObstacle(obstacle) {
+    const tiles = this.arenaTileset;
+    if (!tiles?.ready) return false;
+
+    const ctx = this.ctx;
+    const faceHeight = tiles.wallScreenHeight;
+    const stage = this.arenaStage?.id ?? 0;
+    const accent = STAGE_ACCENTS[stage % STAGE_ACCENTS.length];
+
+    // The shared bake rig keys from the upper left, so every shadow in the
+    // game falls down and to the right -- walls and creatures alike.
+    ctx.save();
+    ctx.globalAlpha = 0.46;
+    ctx.fillStyle = '#000';
+    roundedRect(ctx, obstacle.x + 10, obstacle.y + 14, obstacle.w, obstacle.h + faceHeight, 9);
+    ctx.fill();
+    ctx.restore();
+
+    // Face first; the top panel then covers its upper edge cleanly.
+    tiles.tileRect(
+      ctx, 'wallFace',
+      obstacle.x, obstacle.y + obstacle.h, obstacle.w, faceHeight,
+      obstacle.x, obstacle.y + obstacle.h,
+    );
+    // Anchored to the world grid, not to the block, so adjacent obstacles
+    // share one continuous panel pitch.
+    tiles.tileRect(ctx, 'wallTop', obstacle.x, obstacle.y, obstacle.w, obstacle.h, 0, 0);
+
+    ctx.save();
+    // The cap: the bright line where the top surface breaks into the face.
+    ctx.strokeStyle = 'rgba(208, 233, 255, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x, obstacle.y + obstacle.h);
+    ctx.lineTo(obstacle.x + obstacle.w, obstacle.y + obstacle.h);
+    ctx.stroke();
+
+    // Cyan stays the structural colour throughout the game; gold is never
+    // used here because it belongs to the bullet.
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = accent.primary;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 3, obstacle.y + obstacle.h + faceHeight * 0.42);
+    ctx.lineTo(obstacle.x + obstacle.w - 3, obstacle.y + obstacle.h + faceHeight * 0.42);
+    ctx.stroke();
+    ctx.restore();
+    return true;
+  }
+
   drawObstacle(obstacle) {
+    if (this.drawBakedObstacle(obstacle)) return;
     const ctx = this.ctx;
     const depth = 11;
 
@@ -521,19 +607,121 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     ctx.restore();
   }
 
+  /*
+   * The perimeter as a real wall: a top band all the way round, the far
+   * wall's inner face falling into the room, and the near wall's outer face
+   * falling away from it.
+   *
+   * The far face deliberately covers the first `wallScreenHeight` of floor.
+   * That is what a wall seen from above does, and it is most of what makes
+   * the arena read as a room rather than as a rectangle drawn on a floor.
+   *
+   * Returns false without a tileset so the caller keeps its flat border.
+   */
+  drawBakedArenaWall(bounds) {
+    const tiles = this.arenaTileset;
+    if (!tiles?.ready) return false;
+
+    const ctx = this.ctx;
+    const faceHeight = tiles.wallScreenHeight;
+    const thickness = 22;
+    const left = bounds.x - thickness;
+    const spanW = bounds.w + thickness * 2;
+
+    const band = (x, y, w, h) => tiles.tileRect(ctx, 'wallTop', x, y, w, h, 0, 0);
+    const ringY = bounds.y - thickness;
+    const ringH = bounds.h + thickness * 2 + faceHeight;
+
+    /*
+     * Outside the walls is void, not more floor.
+     *
+     * The outer deck tiles the whole viewport, so without this the perimeter
+     * sits in the middle of a floor field and reads as a stripe rather than
+     * as the edge of a room. Punched with even-odd rather than four rects so
+     * the hole stays exactly the wall ring.
+     */
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 5, 12, 0.84)';
+    ctx.beginPath();
+    ctx.rect(left - 2400, ringY - 2400, spanW + 4800, ringH + 4800);
+    ctx.rect(left, ringY, spanW, ringH);
+    ctx.fill('evenodd');
+    ctx.restore();
+
+    // Far wall: top band outside the floor, inner face falling into the room.
+    band(left, bounds.y - thickness, spanW, thickness);
+    tiles.tileRect(ctx, 'wallFace', left, bounds.y, spanW, faceHeight, left, bounds.y);
+
+    // Its shadow on the floor sells the height more than the face does.
+    ctx.save();
+    const cast = ctx.createLinearGradient(0, bounds.y + faceHeight, 0, bounds.y + faceHeight + 30);
+    cast.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+    cast.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = cast;
+    ctx.fillRect(bounds.x, bounds.y + faceHeight, bounds.w, 30);
+    ctx.restore();
+
+    // Side walls last on this edge, so they close over the far face's ends.
+    band(left, bounds.y, thickness, bounds.h);
+    band(bounds.x + bounds.w, bounds.y, thickness, bounds.h);
+
+    // Near wall: its top band, then its outer face falling away from the room.
+    band(left, bounds.y + bounds.h, spanW, thickness);
+    tiles.tileRect(
+      ctx, 'wallFace',
+      left, bounds.y + bounds.h + thickness, spanW, faceHeight,
+      left, bounds.y + bounds.h + thickness,
+    );
+
+    // Contact occlusion where the side and near walls meet the floor. A hard
+    // edge alone reads as a drawn line; the gradient is what makes the floor
+    // look like it runs underneath something solid.
+    ctx.save();
+    const ao = 18;
+    const edge = (x, y, w, h, x0, y0, x1, y1) => {
+      const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, w, h);
+    };
+    edge(bounds.x, bounds.y + bounds.h - ao, bounds.w, ao,
+         0, bounds.y + bounds.h, 0, bounds.y + bounds.h - ao);
+    edge(bounds.x, bounds.y, ao, bounds.h, bounds.x, 0, bounds.x + ao, 0);
+    edge(bounds.x + bounds.w - ao, bounds.y, ao, bounds.h,
+         bounds.x + bounds.w, 0, bounds.x + bounds.w - ao, 0);
+    ctx.restore();
+
+    // The lit cap along every top edge that breaks into a face.
+    ctx.save();
+    ctx.strokeStyle = 'rgba(208, 233, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(left, bounds.y);
+    ctx.lineTo(left + spanW, bounds.y);
+    ctx.moveTo(left, bounds.y + bounds.h + thickness);
+    ctx.lineTo(left + spanW, bounds.y + bounds.h + thickness);
+    ctx.stroke();
+    ctx.restore();
+    return true;
+  }
+
   drawArenaBorder() {
     const ctx = this.ctx;
     const bounds = this.arenaStage.bounds;
     const stage = this.arenaStage?.id ?? 0;
     const accent = STAGE_ACCENTS[stage % STAGE_ACCENTS.length];
     const pulse = 0.62 + Math.sin(this.elapsed * 2.7) * 0.11 + this.arenaExpansionPulse * 0.24;
+    const baked = this.drawBakedArenaWall(bounds);
 
     ctx.save();
-    ctx.fillStyle = 'rgba(3, 7, 15, 0.94)';
-    ctx.strokeStyle = '#1b2c49';
-    ctx.lineWidth = 14;
-    roundedRect(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 14);
-    ctx.stroke();
+    if (!baked) {
+      ctx.fillStyle = 'rgba(3, 7, 15, 0.94)';
+      ctx.strokeStyle = '#1b2c49';
+      ctx.lineWidth = 14;
+      roundedRect(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 14);
+      ctx.stroke();
+    }
 
     ctx.strokeStyle = `${accent.primary}${Math.round(clamp(pulse, 0, 1) * 255).toString(16).padStart(2, '0')}`;
     ctx.shadowColor = accent.primary;
@@ -665,6 +853,39 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     playerGlow.addColorStop(1, 'rgba(98, 243, 255, 0)');
     ctx.fillStyle = playerGlow;
     ctx.fillRect(this.player.x - 140, this.player.y - 140, 280, 280);
+
+    if (this.bullet.held) {
+      const heldGlow = ctx.createRadialGradient(
+        this.player.x,
+        this.player.y,
+        4,
+        this.player.x,
+        this.player.y,
+        90,
+      );
+      heldGlow.addColorStop(0, 'rgba(255, 212, 65, 0.16)');
+      heldGlow.addColorStop(1, 'rgba(255, 212, 65, 0)');
+      ctx.fillStyle = heldGlow;
+      ctx.fillRect(this.player.x - 95, this.player.y - 95, 190, 190);
+    }
+
+    if (Array.isArray(this.enemies) && this.enemies.length > 0) {
+      for (const enemy of this.enemies) {
+        if (!enemy || enemy.dead || enemy.health <= 0) continue;
+        const enemyGlow = ctx.createRadialGradient(
+          enemy.x,
+          enemy.y,
+          2,
+          enemy.x,
+          enemy.y,
+          44,
+        );
+        enemyGlow.addColorStop(0, 'rgba(235, 87, 87, 0.08)');
+        enemyGlow.addColorStop(1, 'rgba(235, 87, 87, 0)');
+        ctx.fillStyle = enemyGlow;
+        ctx.fillRect(enemy.x - 46, enemy.y - 46, 92, 92);
+      }
+    }
 
     if (!this.bullet.held) {
       const bulletGlow = ctx.createRadialGradient(

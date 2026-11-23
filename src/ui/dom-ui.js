@@ -187,10 +187,12 @@ export class DomUiController {
           <header class="brand-bar">
             <div class="brand-mark" aria-hidden="true">
               <svg viewBox="0 0 56 56" fill="none">
-                <circle cx="28" cy="28" r="22" stroke="currentColor" stroke-width="1.2" opacity=".38"/>
-                <circle cx="28" cy="28" r="9" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M28 5v7M28 44v7M5 28h7M44 28h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                <path class="brand-mark__shot" d="M19 36 37 18" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="28" cy="28" r="22" stroke="currentColor" stroke-width="1.4" opacity=".4"/>
+                <path d="M28 3v8M28 45v8M3 28h8M45 28h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M16 42 28 14 40 42" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+                <path d="M20 34h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".85"/>
+                <path class="brand-mark__shot" d="M28 20v14" stroke="var(--bullet)" stroke-width="3.6" stroke-linecap="round"/>
+                <circle cx="28" cy="20" r="1.8" fill="#ffffff"/>
               </svg>
             </div>
             <h1 id="dashboard-title" class="brand-title">

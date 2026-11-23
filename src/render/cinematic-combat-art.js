@@ -1,4 +1,5 @@
 import { UI_COLORS } from '../ui-renderer.js';
+import { SpriteAtlas, enemySpriteState } from './sprite-atlas.js';
 
 export const CINEMATIC_COMBAT_ART_VERSION = '3.15.1-cinematic-combat-art';
 
@@ -28,6 +29,10 @@ export function cinematicCombatTokens() {
     creatureDetailPass: true,
     archetypeSurfaceDetails: true,
     combatFacingCorrection: true,
+    // Archetypes with a baked atlas draw from it; the rest keep the
+    // procedural path below, and so does everything if a bake fails to load.
+    bakedSpriteAtlases: true,
+    bakedArchetypes: Object.freeze(['scout']),
     runtimeOwner: 'OneBulletGlobalUiRuntime',
   });
 }
@@ -155,6 +160,45 @@ function drawBackSpines(ctx, radius, style, count, phase = 0) {
 export class CinematicCombatArt {
   constructor() {
     this.tokens = cinematicCombatTokens();
+    // Baked atlases are additive and optional. Each one that loads takes over
+    // its archetype; anything unbaked, and everything at all if a load fails,
+    // keeps drawing through the procedural path further down this file.
+    const base = new URL('../assets/sprites/', import.meta.url);
+    this.atlases = { scout: new SpriteAtlas('scout', base) };
+    for (const atlas of Object.values(this.atlases)) atlas.load();
+  }
+
+  /*
+   * Draws an enemy from its baked atlas. Returns false when there is no
+   * usable bake for it, so the caller falls through in the same frame.
+   */
+  drawBakedEnemy(ctx, runtime, enemy) {
+    const atlas = this.atlases?.[enemy?.type];
+    if (!atlas?.ready || enemy?.guardian) return false;
+
+    const style = enemyStyle(enemy);
+    drawEnemyGroundShadow(ctx, enemy, style, 0.15);
+
+    const facing = lockedChargeDirection(enemy) || directionToPlayer(runtime, enemy);
+    const spawn = Number(enemy.spawnTime) || 0;
+    const spawnScale = Math.max(0.2, 1 - spawn * 0.65);
+    // Splitter minis and any future resized variant scale off the radius the
+    // atlas was baked at, so one bake covers every size of an archetype.
+    const baked = Number(atlas.manifest?.radius) || 17;
+
+    return atlas.draw(ctx, {
+      x: enemy.x,
+      y: enemy.y,
+      state: enemySpriteState(enemy),
+      angle: Math.atan2(facing.y, facing.x),
+      // Per-enemy phase keeps a pack of scouts from animating in lockstep.
+      time: (runtime.reducedMotion ? 0 : Math.max(0, Number(runtime.elapsed) || 0)) + (Number(enemy.phase) || 0),
+      // Spawn reads as a fade rather than the procedural path's scale pop:
+      // scaling a pixel sprite by a fraction breaks its grid for no gain.
+      alpha: spawn > 0 ? 0.3 + spawnScale * 0.7 : 1,
+      scale: (Number(enemy.radius) || baked) / baked,
+      flash: clamp01((Number(enemy.hitFlash) || 0) / 0.14) * 0.8,
+    });
   }
 
   drawPlayer(ctx, runtime) {
@@ -387,6 +431,7 @@ export class CinematicCombatArt {
   }
 
   drawScout(ctx, runtime, enemy) {
+    if (this.drawBakedEnemy(ctx, runtime, enemy)) return;
     const style = enemyStyle(enemy);
     const radius = this.beginEnemy(ctx, runtime, enemy, style, 0.15);
     const toPlayer = directionToPlayer(runtime, enemy);

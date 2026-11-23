@@ -1,5 +1,5 @@
 (function initializeReleaseConfig(root) {
-  const version = '3.16.0-mobile-combat';
+  const version = '3.17.0-cartoon-sprites';
   const release = Object.freeze({
     version,
     label: `v${version}`,

@@ -17,7 +17,25 @@ test('cinematic combat art is a render-only replacement for geometric combat sha
   assert.equal(tokens.creatureDetailPass, true);
   assert.equal(tokens.archetypeSurfaceDetails, true);
   assert.equal(tokens.combatFacingCorrection, true);
+  assert.equal(tokens.bakedSpriteAtlases, true);
+  assert.deepEqual([...tokens.bakedArchetypes], ['scout']);
   assert.equal(tokens.runtimeOwner, 'OneBulletGlobalUiRuntime');
+});
+
+test('baked archetypes fall through to procedural art when their atlas is unavailable', async () => {
+  const source = await readFile(new URL('../src/render/cinematic-combat-art.js', import.meta.url), 'utf8');
+
+  // The bake is additive. drawScout must attempt the atlas and then continue
+  // into the procedural body on a false return, so a failed or still-loading
+  // atlas costs fidelity rather than drawing nothing at all.
+  assert.match(source, /drawScout\(ctx, runtime, enemy\) \{\s*if \(this\.drawBakedEnemy\(ctx, runtime, enemy\)\) return;/);
+  assert.match(source, /if \(!atlas\?\.ready \|\| enemy\?\.guardian\) return false;/);
+
+  // Archetypes without a bake must not consult the atlas table at all.
+  for (const archetype of ['drawBrute', 'drawSniper', 'drawCharger', 'drawWarden', 'drawSplitter']) {
+    const body = source.slice(source.indexOf(`  ${archetype}(ctx`));
+    assert.doesNotMatch(body.slice(0, 200), /drawBakedEnemy/, `${archetype} has no bake yet`);
+  }
 });
 
 test('terminal runtime owns the cinematic combat renderer and bypasses legacy geometric combat drawing', async () => {

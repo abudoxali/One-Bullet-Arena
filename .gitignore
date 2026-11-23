@@ -7,3 +7,11 @@ verification/
 coverage/
 *.log
 .claude/launch.json
+
+# Intermediate sprite frames: the bake writes 160 PNGs per actor here
+# before packing them. Only the packed atlas under src/assets/ ships.
+tools/blender/_frames/
+tools/blender/__pycache__/
+*.blend1
+godot/.godot/
+

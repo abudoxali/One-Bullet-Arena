@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const RELEASE = '3.16.0-mobile-combat';
+const RELEASE = '3.17.0-cartoon-sprites';
 
 async function loadGame(page, locale = 'en') {
   await page.addInitScript((value) => localStorage.setItem('one-bullet-language', value), locale);
