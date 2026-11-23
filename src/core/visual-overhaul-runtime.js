@@ -148,28 +148,7 @@ export class OneBulletVisualOverhaulRuntime extends OneBulletWorld2DRuntime {
     ctx.fillStyle = scan;
     ctx.fillRect(scanX - 70, bounds.y + 6, 140, bounds.h - 12);
 
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 0.14;
-    ctx.strokeStyle = palette.warm;
-    ctx.lineWidth = 1.15;
-    ctx.lineCap = 'round';
-    const strandCount = 5 + Math.min(4, stage);
-    for (let index = 0; index < strandCount; index += 1) {
-      const baseY = bounds.y + 58 + ((index * 91 + stage * 37) % Math.max(1, bounds.h - 116));
-      const sway = this.reducedMotion ? 0 : Math.sin(this.elapsed * 0.9 + index) * 8;
-      ctx.beginPath();
-      ctx.moveTo(bounds.x + 30, baseY);
-      ctx.bezierCurveTo(
-        bounds.x + bounds.w * 0.28,
-        baseY - 38 + sway,
-        bounds.x + bounds.w * 0.64,
-        baseY + 44 - sway,
-        bounds.x + bounds.w - 34,
-        baseY + ((index % 2) * 36 - 18),
-      );
-      ctx.stroke();
-    }
-
+    // Clean cartoon floor presentation without murky wavy strands
     ctx.globalCompositeOperation = 'source-over';
     for (let index = 0; index < 9; index += 1) {
       const x = bounds.x + 70 + ((index * 211 + stage * 89) % Math.max(1, bounds.w - 140));
@@ -359,37 +338,7 @@ export class OneBulletVisualOverhaulRuntime extends OneBulletWorld2DRuntime {
     roundedRect(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 14);
     ctx.clip();
 
-    ctx.globalCompositeOperation = 'screen';
-    for (let index = 0; index < 3; index += 1) {
-      const offset = ((stage * 71 + index * 193 + drift * (18 + index * 5)) % (bounds.w + 260)) - 130;
-      const beam = ctx.createLinearGradient(bounds.x + offset - 120, bounds.y, bounds.x + offset + 140, bounds.y + bounds.h);
-      beam.addColorStop(0, 'rgba(0,0,0,0)');
-      beam.addColorStop(0.48, `${index === 1 ? palette.warm : palette.primary}${alphaHex(0.12 + index * 0.025)}`);
-      beam.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = beam;
-      ctx.globalAlpha = 0.58;
-      ctx.beginPath();
-      ctx.moveTo(bounds.x + offset - 110, bounds.y);
-      ctx.lineTo(bounds.x + offset + 40, bounds.y);
-      ctx.lineTo(bounds.x + offset + 210, bounds.y + bounds.h);
-      ctx.lineTo(bounds.x + offset + 52, bounds.y + bounds.h);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.4;
-    ctx.strokeStyle = `${palette.floor}${alphaHex(0.78)}`;
-    ctx.lineWidth = 7;
-    for (let index = 0; index < 4; index += 1) {
-      const y = bounds.y + 74 + ((index * 137 + stage * 47) % Math.max(1, bounds.h - 148));
-      const depth = 34 + (index % 3) * 18;
-      ctx.beginPath();
-      ctx.moveTo(bounds.x + 18, y);
-      ctx.bezierCurveTo(bounds.x + depth, y - 26, bounds.x + bounds.w - depth, y + 20, bounds.x + bounds.w - 18, y - 10);
-      ctx.stroke();
-    }
-
+    // Clean cartoon ambient sparkles without murky beams or dark lines
     ctx.globalCompositeOperation = 'screen';
     ctx.fillStyle = palette.primary;
     for (let index = 0; index < 24; index += 1) {
@@ -407,30 +356,24 @@ export class OneBulletVisualOverhaulRuntime extends OneBulletWorld2DRuntime {
   drawEnvironmentalReadabilityPass() {
     if (this.state === 'menu') return;
     const ctx = this.ctx;
-    const palette = this.palette();
     const bounds = this.arenaStage.bounds;
 
     ctx.save();
     roundedRect(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 14);
     ctx.clip();
 
-    const edgeShade = ctx.createLinearGradient(bounds.x, 0, bounds.x + 120, 0);
-    edgeShade.addColorStop(0, 'rgba(0, 0, 0, 0.35)');
+    // Subtle edge framing without scanlines
+    const edgeShade = ctx.createLinearGradient(bounds.x, 0, bounds.x + 100, 0);
+    edgeShade.addColorStop(0, 'rgba(0, 0, 0, 0.25)');
     edgeShade.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = edgeShade;
-    ctx.fillRect(bounds.x, bounds.y, 130, bounds.h);
+    ctx.fillRect(bounds.x, bounds.y, 100, bounds.h);
 
-    const rightShade = ctx.createLinearGradient(bounds.x + bounds.w, 0, bounds.x + bounds.w - 120, 0);
-    rightShade.addColorStop(0, 'rgba(0, 0, 0, 0.35)');
+    const rightShade = ctx.createLinearGradient(bounds.x + bounds.w, 0, bounds.x + bounds.w - 100, 0);
+    rightShade.addColorStop(0, 'rgba(0, 0, 0, 0.25)');
     rightShade.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = rightShade;
-    ctx.fillRect(bounds.x + bounds.w - 130, bounds.y, 130, bounds.h);
-
-    ctx.globalAlpha = 0.06;
-    ctx.fillStyle = palette.primary;
-    for (let y = bounds.y + 8; y < bounds.y + bounds.h; y += 6) {
-      ctx.fillRect(bounds.x + 8, y, bounds.w - 16, 1);
-    }
+    ctx.fillRect(bounds.x + bounds.w - 100, bounds.y, 100, bounds.h);
     ctx.restore();
   }
 
