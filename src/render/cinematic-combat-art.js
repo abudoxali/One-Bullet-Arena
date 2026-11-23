@@ -212,6 +212,68 @@ export class CinematicCombatArt {
     const recoil = runtime.muzzleRecoil ? clamp01(runtime.muzzleRecoil.life / 0.12) : 0;
     const pulse = runtime.reducedMotion ? 0 : Math.sin(runtime.elapsed * 8.2) * 0.035;
 
+    // Ground contact shadow
+    drawSoftEllipse(ctx, player.x, player.y + 7, 22 + dash * 8, 10, 'rgba(0, 6, 16, 0.44)');
+
+    // Decoupled animated kinetic running legs
+    const moveX = runtime.visualDirection?.x ?? 0;
+    const moveY = runtime.visualDirection?.y ?? 0;
+    const moving = Math.hypot(moveX, moveY) > 0.08;
+    const moveAngle = moving ? Math.atan2(moveY, moveX) : angle;
+    const runCycle = runtime.elapsed * 18;
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(moveAngle);
+    if (moving && !runtime.reducedMotion) {
+      const legStride = Math.sin(runCycle) * 11;
+      // Left leg
+      ctx.fillStyle = '#081e30';
+      ctx.strokeStyle = '#5ad4f2';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(-legStride * 0.7, -9, 6.5, 3.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Right leg
+      ctx.beginPath();
+      ctx.ellipse(legStride * 0.7, 9, 6.5, 3.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Glowing thruster heel spurs
+      ctx.fillStyle = '#62f3ff';
+      ctx.fillRect(-legStride * 0.7 - 4, -10, 2.5, 2);
+      ctx.fillRect(legStride * 0.7 - 4, 8, 2.5, 2);
+    } else {
+      // Stationary ready stance feet
+      ctx.fillStyle = '#081e30';
+      ctx.strokeStyle = '#5ad4f2';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(-3, -9, 5.5, 3.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(-3, 9, 5.5, 3.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Dash chromatic after-images (Ghost trails)
+    if (dash > 0.04 && !runtime.reducedMotion) {
+      const ghostOffsets = [24, 48, 72];
+      const ghostAlphas = [0.28 * dash, 0.16 * dash, 0.08 * dash];
+      for (let i = 0; i < ghostOffsets.length; i += 1) {
+        const off = ghostOffsets[i];
+        ctx.save();
+        ctx.translate(player.x - aim.x * off, player.y - aim.y * off);
+        ctx.rotate(angle);
+        ctx.globalAlpha = ghostAlphas[i];
+        ctx.fillStyle = i === 0 ? '#62f3ff' : (i === 1 ? '#ffd441' : '#a78bfa');
+        drawTeardrop(ctx, 21, 1.25, 0.7, 0.65);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
     ctx.save();
     ctx.translate(player.x - aim.x * recoil * 6, player.y - aim.y * recoil * 6);
     ctx.rotate(angle);
@@ -233,6 +295,7 @@ export class CinematicCombatArt {
       ctx.globalAlpha = 1;
     }
 
+    // Armored cyber-torso with layered pauldrons
     const body = ctx.createRadialGradient(-3, -5, 2, 0, 0, 31);
     body.addColorStop(0, '#f4feff');
     body.addColorStop(0.24, '#62f3ff');
@@ -248,14 +311,26 @@ export class CinematicCombatArt {
     ctx.stroke();
 
     ctx.shadowBlur = 0;
+    // Cybernetic shoulder pauldrons
+    ctx.fillStyle = '#08253a';
+    ctx.strokeStyle = '#62d5f3';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(-2, -15, 7.5, 4.2, 0.25, 0, Math.PI * 2);
+    ctx.ellipse(-2, 15, 7.5, 4.2, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
     strokeFeather(ctx, 20, -1, '#9ff8ff', runtime.elapsed * 8, 0.5);
     strokeFeather(ctx, 20, 1, '#9ff8ff', runtime.elapsed * 8 + Math.PI, 0.5);
 
+    // Glowing core reactor
     ctx.fillStyle = '#fff7c6';
     ctx.beginPath();
     ctx.ellipse(9, 0, 7.6, 4.8, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // Kinetic rail-glove emitter barrel
     ctx.strokeStyle = UI_COLORS.bullet;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
@@ -264,7 +339,18 @@ export class CinematicCombatArt {
     ctx.quadraticCurveTo(27, -1.8, 34, 0);
     ctx.stroke();
 
-    if (runtime.bullet?.held) drawSoftEllipse(ctx, 39, 0, 4.3, 3.1, UI_COLORS.bullet, 0.9);
+    // Held bullet with dynamic magnetic containment rings
+    if (runtime.bullet?.held) {
+      drawSoftEllipse(ctx, 39, 0, 4.6, 3.4, UI_COLORS.bullet, 0.95);
+      if (!runtime.reducedMotion) {
+        const ringTime = runtime.elapsed * 9;
+        ctx.strokeStyle = 'rgba(255, 238, 120, 0.65)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.ellipse(39, 0, 7.5, 3.8 * Math.abs(Math.sin(ringTime)), ringTime * 0.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 
@@ -470,6 +556,22 @@ export class CinematicCombatArt {
     ctx.bezierCurveTo(radius * 1.08, -radius * 0.02, radius * 1.02, -radius * 0.12, radius * 0.82, -radius * 0.2);
     ctx.fill();
     ctx.stroke();
+
+    // Heavy reinforced pauldron armor plates
+    ctx.fillStyle = '#1c0e08';
+    ctx.strokeStyle = style.core;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.rect(-radius * 0.5, -radius * 1.08, radius * 0.55, radius * 0.36);
+    ctx.rect(-radius * 0.5, radius * 0.72, radius * 0.55, radius * 0.36);
+    ctx.fill();
+    ctx.stroke();
+
+    // Rear exhaust vent ports with heat pulses
+    ctx.fillStyle = '#ff9f43';
+    ctx.fillRect(-radius * 1.1, -radius * 0.26, 4, 3);
+    ctx.fillRect(-radius * 1.1, radius * 0.18, 4, 3);
+
     ctx.shadowBlur = 0;
     ctx.strokeStyle = style.core;
     ctx.globalAlpha = 0.52;
@@ -492,6 +594,24 @@ export class CinematicCombatArt {
     const toPlayer = directionToPlayer(runtime, enemy);
     ctx.rotate(Math.atan2(toPlayer.y, toPlayer.x));
     ctx.scale(1.2, 0.82);
+
+    // Active telegraph laser sight line pointing downrange
+    if ((enemy.shotTelegraph || 0) > 0) {
+      const laserTelegraph = clamp01(enemy.shotTelegraph);
+      ctx.save();
+      ctx.globalAlpha = 0.35 + laserTelegraph * 0.55;
+      ctx.strokeStyle = laserTelegraph > 0.65 ? '#ff3b56' : style.accent;
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 1.2 + laserTelegraph * 2.8;
+      ctx.setLineDash([14, 7]);
+      ctx.beginPath();
+      ctx.moveTo(radius * 1.7, 0);
+      ctx.lineTo(radius * 1.7 + 650, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     drawTeardrop(ctx, radius, 1.48, 0.5, 0.4);
     ctx.fill();
     ctx.stroke();
@@ -502,8 +622,18 @@ export class CinematicCombatArt {
     ctx.moveTo(radius * 0.42, 0);
     ctx.quadraticCurveTo(radius * 1.1, -radius * 0.04, radius * 1.7, 0);
     ctx.stroke();
-    ctx.globalAlpha = 0.55 + clamp01(enemy.shotTelegraph) * 0.35;
+
+    // Precision induction barrel coils
     ctx.strokeStyle = style.accent;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.8, -radius * 0.15);
+    ctx.lineTo(radius * 0.8, radius * 0.15);
+    ctx.moveTo(radius * 1.2, -radius * 0.12);
+    ctx.lineTo(radius * 1.2, radius * 0.12);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.55 + clamp01(enemy.shotTelegraph) * 0.35;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(-radius * 0.55, -radius * 0.32);
@@ -535,13 +665,24 @@ export class CinematicCombatArt {
     ctx.moveTo(radius * 0.54, radius * 0.34);
     ctx.quadraticCurveTo(radius * 1.24, radius * 0.28, radius * 1.52, radius * 0.08);
     ctx.stroke();
+
+    // Blazing thruster plume and dynamic embers during windup
     if (heat > 0.05) {
-      ctx.globalAlpha = 0.36 + heat * 0.28;
+      ctx.globalAlpha = 0.36 + heat * 0.38;
       ctx.strokeStyle = style.core;
       ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(-radius * 1.25, 0);
       ctx.quadraticCurveTo(-radius * 1.85, Math.sin(runtime.elapsed * 18) * radius * 0.26, -radius * 2.36, 0);
+      ctx.stroke();
+      // Secondary twin flame jets
+      ctx.strokeStyle = '#ffd86b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 1.1, -radius * 0.25);
+      ctx.lineTo(-radius * 1.6 - heat * radius * 0.6, -radius * 0.35);
+      ctx.moveTo(-radius * 1.1, radius * 0.25);
+      ctx.lineTo(-radius * 1.6 - heat * radius * 0.6, radius * 0.35);
       ctx.stroke();
     }
     this.drawCore(ctx, radius, style, radius * 0.18, 0);
@@ -572,8 +713,11 @@ export class CinematicCombatArt {
     ctx.moveTo(-radius * 0.68, radius * 0.18);
     ctx.bezierCurveTo(-radius * 0.18, radius * 0.42, radius * 0.18, radius * 0.34, radius * 0.66, radius * 0.08);
     ctx.stroke();
-    this.drawCore(ctx, radius, style, -radius * 0.18, -radius * 0.14, 0.86);
-    this.drawCore(ctx, radius, style, radius * 0.22, radius * 0.16, 0.68);
+
+    // Twin pulsating mitosis cores
+    const mitosisShift = Math.sin(enemy.phase * 3.5) * radius * 0.16;
+    this.drawCore(ctx, radius, style, -radius * 0.18 - mitosisShift, -radius * 0.14, 0.86);
+    this.drawCore(ctx, radius, style, radius * 0.22 + mitosisShift, radius * 0.16, 0.78);
     drawBackSpines(ctx, radius, style, 5, enemy.phase * 4.4);
     ctx.restore();
   }
@@ -610,6 +754,15 @@ export class CinematicCombatArt {
       ctx.bezierCurveTo(radius * 1.44, radius * 0.22, radius * 1.18, radius * 0.68, radius * 0.28, radius * 0.84);
       ctx.stroke();
       ctx.fill();
+
+      // Hexagonal energy lattice pulse when active
+      if (active && !runtime.reducedMotion) {
+        ctx.strokeStyle = 'rgba(191, 248, 255, 0.4)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(radius * 1.15, 0, radius * 0.42, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.stroke();
+      }
       ctx.restore();
     }
     ctx.restore();
@@ -637,6 +790,23 @@ export class CinematicCombatArt {
     ctx.stroke();
     this.drawCore(ctx, radius, style, 0, 0, open ? 1 : 0.38);
     drawForwardEye(ctx, radius, style, 0.26, open ? 0.3 : 0.08);
+
+    // Orbiting defense satellite drones
+    if (!open && !runtime.reducedMotion) {
+      const orbitCount = 3;
+      const orbitRadius = radius * 1.48;
+      for (let i = 0; i < orbitCount; i += 1) {
+        const orbitAngle = enemy.phase * 2.2 + (i * Math.PI * 2) / orbitCount;
+        const ox = Math.cos(orbitAngle) * orbitRadius;
+        const oy = Math.sin(orbitAngle) * orbitRadius * 0.68;
+        drawSoftEllipse(ctx, ox, oy, 5.5, 4.2, '#67ddff', 0.85);
+        ctx.strokeStyle = '#e0fbff';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.ellipse(ox, oy, 5.5, 4.2, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
     if (!open) {
       ctx.save();

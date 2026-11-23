@@ -242,9 +242,16 @@ export class OneBulletWorldExpansionRuntime extends OneBulletDashboardPolishRunt
     // to settle, which reads as dragging a heavy camera rather than as
     // anticipation. Lead is halved and the follow is roughly twice as stiff,
     // which keeps the look-ahead benefit while staying under the player.
-    const leadScale = 40 + this.arenaStage.id * 4;
-    const targetX = this.player.x + (this.visualDirection?.x || 0) * leadScale;
-    const targetY = this.player.y + (this.visualDirection?.y || 0) * leadScale * 0.72;
+    const leadScale = 38 + this.arenaStage.id * 3.5;
+    const aimDx = (this.pointer?.x ?? this.player.x) - this.player.x;
+    const aimDy = (this.pointer?.y ?? this.player.y) - this.player.y;
+    const aimDist = Math.hypot(aimDx, aimDy);
+    const aimLead = aimDist > 10 ? Math.min(26, (aimDist / 280) * 26) : 0;
+    const aimX = aimDist > 0.001 ? (aimDx / aimDist) * aimLead : 0;
+    const aimY = aimDist > 0.001 ? (aimDy / aimDist) * aimLead : 0;
+
+    const targetX = this.player.x + (this.visualDirection?.x || 0) * leadScale + aimX;
+    const targetY = this.player.y + (this.visualDirection?.y || 0) * leadScale * 0.72 + aimY * 0.72;
     const viewportW = WIDTH / Math.max(0.01, camera.zoom);
     const viewportH = HEIGHT / Math.max(0.01, camera.zoom);
     const clampedX = cameraClampAxis(targetX, bounds.x, bounds.w, viewportW);

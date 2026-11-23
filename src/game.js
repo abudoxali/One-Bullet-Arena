@@ -485,8 +485,15 @@ export class OneBulletGame {
 
   tryDash() {
     if (!this.dashRequested) return;
+    if (this.player.dashCooldown > 0 || this.player.dashRemaining > 0) {
+      // Buffer input if pressed within 120ms of cooldown expiration
+      if (this.player.dashCooldown <= 0.12 && this.player.dashRemaining <= 0) {
+        return;
+      }
+      this.dashRequested = false;
+      return;
+    }
     this.dashRequested = false;
-    if (this.player.dashCooldown > 0 || this.player.dashRemaining > 0) return;
     const movement = this.movementDirection();
     const aim = normalize(this.pointer.x - this.player.x, this.pointer.y - this.player.y);
     const direction = movement.x || movement.y ? movement : aim;

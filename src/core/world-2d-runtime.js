@@ -841,19 +841,30 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
 
+    const dash = clamp(this.dashVisual || 0, 0, 1);
+
+    // 1. Dynamic player kinetic illumination aura
+    const playerGlowRadius = 140 + dash * 45;
     const playerGlow = ctx.createRadialGradient(
       this.player.x,
       this.player.y,
-      8,
+      6,
       this.player.x,
       this.player.y,
-      130,
+      playerGlowRadius,
     );
-    playerGlow.addColorStop(0, 'rgba(98, 243, 255, 0.12)');
+    playerGlow.addColorStop(0, 'rgba(98, 243, 255, 0.24)');
+    playerGlow.addColorStop(0.38, 'rgba(60, 185, 240, 0.11)');
     playerGlow.addColorStop(1, 'rgba(98, 243, 255, 0)');
     ctx.fillStyle = playerGlow;
-    ctx.fillRect(this.player.x - 140, this.player.y - 140, 280, 280);
+    ctx.fillRect(
+      this.player.x - playerGlowRadius,
+      this.player.y - playerGlowRadius,
+      playerGlowRadius * 2,
+      playerGlowRadius * 2,
+    );
 
+    // 2. Held bullet: concentrated warm golden core with rotating corona
     if (this.bullet.held) {
       const heldGlow = ctx.createRadialGradient(
         this.player.x,
@@ -861,46 +872,102 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
         4,
         this.player.x,
         this.player.y,
-        90,
+        115,
       );
-      heldGlow.addColorStop(0, 'rgba(255, 212, 65, 0.16)');
-      heldGlow.addColorStop(1, 'rgba(255, 212, 65, 0)');
+      heldGlow.addColorStop(0, 'rgba(255, 235, 95, 0.32)');
+      heldGlow.addColorStop(0.35, 'rgba(255, 195, 45, 0.14)');
+      heldGlow.addColorStop(1, 'rgba(255, 195, 45, 0)');
       ctx.fillStyle = heldGlow;
-      ctx.fillRect(this.player.x - 95, this.player.y - 95, 190, 190);
+      ctx.fillRect(this.player.x - 120, this.player.y - 120, 240, 240);
     }
 
-    if (Array.isArray(this.enemies) && this.enemies.length > 0) {
-      for (const enemy of this.enemies) {
-        if (!enemy || enemy.dead || enemy.health <= 0) continue;
-        const enemyGlow = ctx.createRadialGradient(
-          enemy.x,
-          enemy.y,
-          2,
-          enemy.x,
-          enemy.y,
-          44,
-        );
-        enemyGlow.addColorStop(0, 'rgba(235, 87, 87, 0.08)');
-        enemyGlow.addColorStop(1, 'rgba(235, 87, 87, 0)');
-        ctx.fillStyle = enemyGlow;
-        ctx.fillRect(enemy.x - 46, enemy.y - 46, 92, 92);
-      }
-    }
-
+    // 3. In-flight radiant bullet & recall energy tether
     if (!this.bullet.held) {
+      const isRecalling = Boolean(this.bullet.recalling);
+      const bulletRadius = isRecalling ? 135 : 165;
       const bulletGlow = ctx.createRadialGradient(
         this.bullet.x,
         this.bullet.y,
         3,
         this.bullet.x,
         this.bullet.y,
-        76,
+        bulletRadius,
       );
-      bulletGlow.addColorStop(0, 'rgba(255, 230, 109, 0.22)');
-      bulletGlow.addColorStop(1, 'rgba(255, 230, 109, 0)');
+      if (isRecalling) {
+        bulletGlow.addColorStop(0, 'rgba(120, 245, 255, 0.45)');
+        bulletGlow.addColorStop(0.35, 'rgba(60, 205, 255, 0.20)');
+        bulletGlow.addColorStop(1, 'rgba(60, 205, 255, 0)');
+      } else {
+        bulletGlow.addColorStop(0, 'rgba(255, 245, 140, 0.45)');
+        bulletGlow.addColorStop(0.35, 'rgba(255, 205, 50, 0.22)');
+        bulletGlow.addColorStop(1, 'rgba(255, 180, 40, 0)');
+      }
       ctx.fillStyle = bulletGlow;
-      ctx.fillRect(this.bullet.x - 82, this.bullet.y - 82, 164, 164);
+      ctx.fillRect(
+        this.bullet.x - bulletRadius,
+        this.bullet.y - bulletRadius,
+        bulletRadius * 2,
+        bulletRadius * 2,
+      );
+
+      // Recall energy tether light corridor
+      if (isRecalling) {
+        ctx.strokeStyle = 'rgba(98, 243, 255, 0.16)';
+        ctx.lineWidth = 16;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.player.x, this.player.y);
+        ctx.lineTo(this.bullet.x, this.bullet.y);
+        ctx.stroke();
+      }
     }
+
+    // 4. Enemy threat radiance (Color-coded signature lighting & telegraph flares)
+    if (Array.isArray(this.enemies) && this.enemies.length > 0) {
+      for (const enemy of this.enemies) {
+        if (!enemy || enemy.dead || enemy.health <= 0) continue;
+        const hit = (enemy.hitFlash || 0) > 0;
+        const heat = Math.max(0, enemy.chargeTelegraph || enemy.shotTelegraph || (enemy.hitSquash || 0));
+        let color = 'rgba(255, 90, 110, ';
+        let rad = (enemy.radius || 16) * 2.8;
+
+        if (enemy.guardian) {
+          color = 'rgba(103, 221, 255, ';
+          rad = (enemy.radius || 42) * 2.5;
+        } else if (enemy.type === 'brute') {
+          color = 'rgba(255, 159, 67, ';
+          rad = (enemy.radius || 24) * 2.9;
+        } else if (enemy.type === 'sniper') {
+          color = 'rgba(167, 139, 250, ';
+          rad = (enemy.radius || 15) * 3.2;
+        } else if (enemy.type === 'charger') {
+          color = 'rgba(255, 75, 95, ';
+          rad = (enemy.radius || 18) * (heat > 0 ? 4.2 : 2.6);
+        } else if (enemy.type === 'splitter') {
+          color = 'rgba(126, 242, 154, ';
+          rad = (enemy.radius || 16) * 2.8;
+        } else if (enemy.type === 'warden') {
+          color = 'rgba(79, 228, 255, ';
+          rad = (enemy.radius || 24) * 3.1;
+        }
+
+        const alphaCore = hit ? 0.36 : (heat > 0 ? 0.28 : 0.14);
+        const enemyGlow = ctx.createRadialGradient(
+          enemy.x,
+          enemy.y,
+          2,
+          enemy.x,
+          enemy.y,
+          rad,
+        );
+        enemyGlow.addColorStop(0, `${color}${alphaCore})`);
+        enemyGlow.addColorStop(0.45, `${color}${alphaCore * 0.38})`);
+        enemyGlow.addColorStop(1, `${color}0)`);
+        ctx.fillStyle = enemyGlow;
+        ctx.fillRect(enemy.x - rad, enemy.y - rad, rad * 2, rad * 2);
+      }
+    }
+
     ctx.restore();
   }
 

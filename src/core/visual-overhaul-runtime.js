@@ -529,6 +529,25 @@ export class OneBulletVisualOverhaulRuntime extends OneBulletWorld2DRuntime {
     beam.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = beam;
     ctx.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
+
+    // Subtle edge specular rim on bounds
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = palette.primary;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bounds.x + 1, bounds.y + 1, bounds.w - 2, bounds.h - 2);
+
+    // Cinematic vignette framing the arena
+    const cx = bounds.x + bounds.w / 2;
+    const cy = bounds.y + bounds.h / 2;
+    const maxR = Math.hypot(bounds.w, bounds.h) * 0.52;
+    const vignette = ctx.createRadialGradient(cx, cy, maxR * 0.48, cx, cy, maxR);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(2, 6, 14, 0.32)');
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = vignette;
+    ctx.fillRect(bounds.x - 30, bounds.y - 30, bounds.w + 60, bounds.h + 60);
+
     ctx.restore();
   }
 

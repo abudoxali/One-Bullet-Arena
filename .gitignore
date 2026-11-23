@@ -13,5 +13,6 @@ coverage/
 tools/blender/_frames/
 tools/blender/__pycache__/
 *.blend1
-godot/.godot/
+godot/
+output/
 
