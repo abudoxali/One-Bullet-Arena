@@ -51,7 +51,7 @@ test('sniper repositions for a useful firing lane instead of shooting from behin
     game.startRun();
     game.enemies = [];
     game.enemyShots = [];
-    game.player.x = 640;
+    game.player.x = 680;
     game.player.y = 360;
     const sniper = game.spawnEnemy('sniper', 0, { point: { x: 430, y: 360 } });
     sniper.spawnTime = 0;
