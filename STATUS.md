@@ -1,23 +1,21 @@
 # One Bullet Arena — Status
 
-Last verified: 2026-10-20
-Canonical repository: `C:\Users\Abud\Desktop\GitHub\One-Bullet-Arena`
-Remote: `https://github.com/3bud-ZC/One-Bullet-Arena.git`
-Branch: `main` @ `2d64045` (synchronized with origin/main)
-Preserved local file: `AGENTS.md` (operational working notes)
+Last verified: 2026-11-23
+Canonical repository: `C:\Users\Abud\Desktop\GitHub\My Games\One-Bullet-Arena`
+Remote: `https://github.com/abudoxali/One-Bullet-Arena.git`
+Branch: `main` @ `80e7e75` (synchronized with origin/main)
+Live Production URL: `https://onebulletarena.abud.fun/` (Hosted on Contabo VPS via Nginx + Cloudflare HTTPS)
 
 ---
 
-## 2026-10-20 Verification & Workspace Hygiene
-- **Syntax Check:** `npm run check` passed across all 44 JavaScript modules and scripts.
-- **Node Test Suite:** `npm test` passed **161/161 tests** (100% green in ~620ms, covering sectors, checkpoints, cinematic art, feedback, pacing, quality tiers, upgrades, guardian progression).
-- **Live Smoke:** Static server on port 3055 served `GET /` -> 200.
-- **Verdict:** **RUNNABLE / COMPLETE CANDIDATE**
+## 2026-11-23 Production VPS Migration & Live Launch
+- **Hosting Migration**: Successfully migrated the live production deployment from GitHub Pages to the user's dedicated Contabo VPS (`5.189.151.43`).
+- **Nginx & SSL**: Configured Nginx static web server with HTTP -> HTTPS redirection, Let's Encrypt SSL certificate (`/etc/letsencrypt/live/onebulletarena.abud.fun/`), aggressive caching for immutable static assets (JS modules, CSS, media), and strict `no-cache` for `sw.js` and HTML to guarantee instant update propagation.
+- **Cloudflare DNS & Edge**: Updated DNS record `onebulletarena.abud.fun` -> `5.189.151.43` (A record) on Cloudflare with SSL proxying and purged edge caches.
+- **Verification**: Verified live endpoint `https://onebulletarena.abud.fun/` returns HTTP 200 OK with runtime version `3.17.0-cartoon-sprites`.
+- **Deploy Automation**: Added `deploy-vps.sh` for one-command git-synced deploys directly on the VPS.
 
 ---
-
-
-Last updated: 2026-08-20
 
 ## 2026-11-23 Visual Identity & Modern UI/Motion Polish
 - **New App Icon & Brand Identity**: Integrated the official app icon featuring the fiery crosshair "A" frame, glowing golden bullet core, metallic chiseled typography, and colosseum ambiance across PWA assets (`icons/app-icon.svg`, `icons/app-icon.jpg`, `assets/app-icon.jpg`).
@@ -31,11 +29,11 @@ Last updated: 2026-08-20
 ## Current release
 
 - Product: **One Bullet Arena / حلبة الطلقة الواحدة**
-- Release: **v3.16.0 — Mobile Combat Controls**
-- Canonical version: `3.16.0-mobile-combat`
-- Canonical label: `v3.16.0-mobile-combat`
+- Release: **v3.17.0 — Cartoon Sprites & Modern Motion UI**
+- Canonical version: `3.17.0-cartoon-sprites`
+- Canonical label: `v3.17.0-cartoon-sprites`
 - Release channel: `smooth-runtime`
-- Service Worker cache: `one-bullet-arena-v3.16.0-mobile-combat`
+- Service Worker cache: `one-bullet-arena-v3.17.0-cartoon-sprites`
 - Canonical presentation/runtime owner: `OneBulletGlobalUiRuntime`
 - Production branch: `main`
 - Gameplay coordinate system: **1280×720 logical coordinates preserved**
