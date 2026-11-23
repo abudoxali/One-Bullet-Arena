@@ -29,7 +29,7 @@ test('checkpoint dashboard uses cinematic DOM presentation without changing save
   await loadGame(page);
   await seedCheckpoint(page);
   const snapshot = await page.evaluate(() => window.__ONE_BULLET_ARENA__.getSnapshot());
-  expect(snapshot.releaseVersion).toBe('3.18.0-kinetic-overhaul');
+  expect(snapshot.releaseVersion).toBe('3.19.0-cartoon-overhaul');
   expect(snapshot.globalUiRevision).toBe('smooth-fixedstep-presentation-v1');
   expect(snapshot.checkpointWave).toBe(7);
   expect(snapshot.checkpointAvailable).toBe(true);

@@ -9,7 +9,7 @@ import {
 } from '../src/core/ui-repair-runtime.js';
 
 test('canonical UI runtime exposes the cinematic smooth presentation contract', () => {
-  assert.equal(GLOBAL_UI_RUNTIME_VERSION, '3.18.0-kinetic-overhaul');
+  assert.equal(GLOBAL_UI_RUNTIME_VERSION, '3.19.0-cartoon-overhaul');
   assert.equal(UI_REPAIR_RUNTIME_VERSION, GLOBAL_UI_RUNTIME_VERSION);
   assert.equal(GLOBAL_UI_REVISION, 'smooth-fixedstep-presentation-v1');
   assert.equal(FIXED_SIMULATION_HZ, 120);

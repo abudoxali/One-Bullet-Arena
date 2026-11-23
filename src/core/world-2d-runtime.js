@@ -78,6 +78,8 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     // atlas cannot be fetched.
     this.arenaTileset = new TilesetAtlas('arena-tileset', new URL('../assets/sprites/', import.meta.url));
     this.arenaTileset.load();
+    // Default to true for the vibrant 2D cartoon animation tiles map
+    this.preferCartoon2DMap = true;
   }
 
   update(dt) {
@@ -306,6 +308,7 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
 
     const tiles = this.arenaTileset;
     const baked = Boolean(tiles?.ready);
+    const useBaked = baked && !this.preferCartoon2DMap;
     const startX = Math.floor(bounds.x / TILE_SIZE) * TILE_SIZE;
     const startY = Math.floor(bounds.y / TILE_SIZE) * TILE_SIZE;
     for (let y = startY; y < bounds.y + bounds.h + TILE_SIZE; y += TILE_SIZE) {
@@ -313,25 +316,76 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
         const column = Math.floor(x / TILE_SIZE);
         const row = Math.floor(y / TILE_SIZE);
         const variant = floorTileVariant(column, row, stage);
-        if (baked) {
+        if (useBaked) {
           tiles.draw(ctx, floorPieceName(variant, tiles.manifest.floorVariants), x, y, TILE_SIZE, TILE_SIZE);
           continue;
         }
 
-        const alpha = variant === 0 ? 0.19 : variant === 1 ? 0.11 : 0.07;
-        ctx.fillStyle = variant === 3 ? `${accent.secondary}10` : `rgba(42, 60, 92, ${alpha})`;
-        ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        // Vibrant 2D Cartoon Tile Grid
+        // 1. Base cartoon tile plate
+        ctx.fillStyle = variant === 3 ? 'rgba(24, 38, 64, 0.42)' : variant === 1 ? 'rgba(18, 30, 52, 0.48)' : 'rgba(14, 24, 42, 0.45)';
+        ctx.fillRect(x + 1.5, y + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
 
-        ctx.strokeStyle = variant === 3 ? `${accent.primary}25` : 'rgba(115, 145, 194, 0.13)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        // 2. Comic ink tile seam stroke
+        ctx.strokeStyle = 'rgba(45, 75, 120, 0.38)';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(x + 1.5, y + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
 
-        ctx.fillStyle = 'rgba(214, 237, 255, 0.08)';
-        ctx.fillRect(x + 5, y + 5, TILE_SIZE - 10, 1);
+        // 3. Crisp glossy cartoon top edge highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+        ctx.fillRect(x + 3.5, y + 3.5, TILE_SIZE - 7, 1.8);
+
+        // 4. Subtle corner bolt studs
+        ctx.fillStyle = 'rgba(100, 150, 220, 0.3)';
+        ctx.fillRect(x + 4, y + 4, 2, 2);
+        ctx.fillRect(x + TILE_SIZE - 6, y + 4, 2, 2);
+        ctx.fillRect(x + 4, y + TILE_SIZE - 6, 2, 2);
+        ctx.fillRect(x + TILE_SIZE - 6, y + TILE_SIZE - 6, 2, 2);
+
+        // 5. Stylized 2D cartoon tile variants
+        if (variant === 1) {
+          // Cartoon Neon Circuit Tile
+          const pulse = 0.35 + Math.sin(this.elapsed * 3.2 + column * 0.8 + row * 0.9) * 0.22;
+          ctx.strokeStyle = `${accent.primary}${Math.round(clamp(pulse, 0, 1) * 255).toString(16).padStart(2, '0')}`;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(x + 12, y + TILE_SIZE / 2);
+          ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+          ctx.lineTo(x + TILE_SIZE / 2, y + 12);
+          ctx.stroke();
+          ctx.fillStyle = accent.secondary;
+          ctx.beginPath();
+          ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (variant === 2) {
+          // Cartoon Cooling Vent Tile
+          ctx.fillStyle = 'rgba(4, 8, 16, 0.55)';
+          const ventY = y + 16;
+          for (let v = 0; v < 3; v += 1) {
+            ctx.fillRect(x + 14, ventY + v * 8, TILE_SIZE - 28, 3.5);
+          }
+        } else if (variant === 3) {
+          // Cartoon Sector Accent / Hazard Tile
+          ctx.fillStyle = `${accent.warm}22`;
+          ctx.beginPath();
+          ctx.moveTo(x + 4, y + 18);
+          ctx.lineTo(x + 18, y + 4);
+          ctx.lineTo(x + 24, y + 4);
+          ctx.lineTo(x + 4, y + 24);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x + TILE_SIZE - 4, y + TILE_SIZE - 18);
+          ctx.lineTo(x + TILE_SIZE - 18, y + TILE_SIZE - 4);
+          ctx.lineTo(x + TILE_SIZE - 24, y + TILE_SIZE - 4);
+          ctx.lineTo(x + TILE_SIZE - 4, y + TILE_SIZE - 24);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 
-    if (baked) {
+    if (useBaked) {
       // The panels bake neutral so one atlas serves all eight sectors; the
       // sector's own colour goes on here, as a wash rather than a fill, so
       // the baked bevel lighting still shows through.
@@ -347,20 +401,16 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     const ctx = this.ctx;
     const centerX = bounds.x + bounds.w / 2;
     const centerY = bounds.y + bounds.h / 2;
-    const laneWidth = 68;
 
     ctx.save();
     roundedRect(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 14);
     ctx.clip();
 
-    ctx.fillStyle = 'rgba(3, 8, 18, 0.3)';
-    ctx.fillRect(bounds.x, centerY - laneWidth / 2, bounds.w, laneWidth);
-    ctx.fillRect(centerX - laneWidth / 2, bounds.y, laneWidth, bounds.h);
-
-    ctx.strokeStyle = `${accent.primary}30`;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([18, 17]);
-    const dashOffset = (this.elapsed * 18) % 35;
+    // Sleek subtle cartoon arena guide tracks
+    ctx.strokeStyle = `${accent.primary}25`;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([14, 16]);
+    const dashOffset = (this.elapsed * 18) % 30;
     ctx.lineDashOffset = -dashOffset;
     ctx.beginPath();
     ctx.moveTo(bounds.x, centerY);
@@ -370,17 +420,6 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = accent.warm;
-    const gateSize = 7;
-    for (let offset = 35; offset < bounds.w / 2 - 70; offset += 72) {
-      ctx.fillRect(centerX - offset - gateSize / 2, centerY - 2, gateSize, 4);
-      ctx.fillRect(centerX + offset - gateSize / 2, centerY - 2, gateSize, 4);
-    }
-    for (let offset = 35; offset < bounds.h / 2 - 70; offset += 72) {
-      ctx.fillRect(centerX - 2, centerY - offset - gateSize / 2, 4, gateSize);
-      ctx.fillRect(centerX - 2, centerY + offset - gateSize / 2, 4, gateSize);
-    }
     ctx.restore();
   }
 
@@ -392,18 +431,41 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
     ctx.save();
     ctx.translate(centerX, centerY);
 
-    ctx.fillStyle = 'rgba(3, 8, 18, 0.78)';
-    ctx.strokeStyle = `${accent.secondary}88`;
+    // 2D Cartoon Combat Ring Emblem (Open, clear, zero visual obstruction)
+    // Outer animated cartoon energy ring
+    ctx.strokeStyle = `${accent.secondary}48`;
     ctx.lineWidth = 3;
-    polygon(ctx, 8, 82 + stage * 4, Math.PI / 8);
-    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 80 + stage * 3, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.globalAlpha = 0.34;
-    ctx.strokeStyle = accent.warm;
+    // Rotating dashed combat ring
+    ctx.strokeStyle = `${accent.primary}55`;
     ctx.lineWidth = 2;
-    polygon(ctx, 6, 31, Math.PI / 6);
+    ctx.setLineDash([16, 14]);
+    const rot = (this.elapsed * 18) % 30;
+    ctx.lineDashOffset = -rot;
+    ctx.beginPath();
+    ctx.arc(0, 0, 56, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Sleek central target crosshair emblem flush on floor
+    ctx.strokeStyle = `${accent.warm}50`;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-18, 0);
+    ctx.lineTo(18, 0);
+    ctx.moveTo(0, -18);
+    ctx.lineTo(0, 18);
+    ctx.stroke();
+
+    // Small central glowing cartoon hub
+    ctx.fillStyle = `${accent.primary}35`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.restore();
   }
 
@@ -495,6 +557,7 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
   drawBakedObstacle(obstacle) {
     const tiles = this.arenaTileset;
     if (!tiles?.ready) return false;
+    if (this.preferCartoon2DMap !== false) return false;
 
     const ctx = this.ctx;
     const faceHeight = tiles.wallScreenHeight;
@@ -546,64 +609,85 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
   drawObstacle(obstacle) {
     if (this.drawBakedObstacle(obstacle)) return;
     const ctx = this.ctx;
-    const depth = 11;
+    const stage = this.arenaStage?.id ?? 0;
+    const accent = STAGE_ACCENTS[stage % STAGE_ACCENTS.length];
 
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 16;
-    roundedRect(ctx, obstacle.x + 8, obstacle.y + 12, obstacle.w, obstacle.h, 10);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#07101f';
-    ctx.beginPath();
-    ctx.moveTo(obstacle.x + obstacle.w, obstacle.y + 7);
-    ctx.lineTo(obstacle.x + obstacle.w + depth, obstacle.y + depth + 4);
-    ctx.lineTo(obstacle.x + obstacle.w + depth, obstacle.y + obstacle.h + depth);
-    ctx.lineTo(obstacle.x + obstacle.w, obstacle.y + obstacle.h);
-    ctx.closePath();
+    // 1. Soft rounded cartoon contact shadow
+    ctx.fillStyle = 'rgba(0, 4, 12, 0.42)';
+    roundedRect(ctx, obstacle.x + 6, obstacle.y + 10, obstacle.w, obstacle.h, 14);
     ctx.fill();
 
-    ctx.fillStyle = '#090f1d';
-    ctx.beginPath();
-    ctx.moveTo(obstacle.x + 7, obstacle.y + obstacle.h);
-    ctx.lineTo(obstacle.x + obstacle.w, obstacle.y + obstacle.h);
-    ctx.lineTo(obstacle.x + obstacle.w + depth, obstacle.y + obstacle.h + depth);
-    ctx.lineTo(obstacle.x + depth, obstacle.y + obstacle.h + depth);
-    ctx.closePath();
-    ctx.fill();
+    // 2. Bold comic ink outline
+    ctx.strokeStyle = '#081020';
+    ctx.lineWidth = 3.6;
 
-    const top = ctx.createLinearGradient(
+    // 3. Cel-shaded 2D cartoon bumper pillar body
+    const bodyGradient = ctx.createLinearGradient(
       obstacle.x,
       obstacle.y,
       obstacle.x + obstacle.w,
       obstacle.y + obstacle.h,
     );
-    top.addColorStop(0, '#243552');
-    top.addColorStop(0.55, '#14243e');
-    top.addColorStop(1, '#0c172b');
-    ctx.fillStyle = top;
-    ctx.strokeStyle = '#6381b8';
-    ctx.lineWidth = 2.5;
-    roundedRect(ctx, obstacle.x, obstacle.y, obstacle.w, obstacle.h, 10);
+    bodyGradient.addColorStop(0, '#1c2e4a');
+    bodyGradient.addColorStop(0.5, '#122038');
+    bodyGradient.addColorStop(1, '#0a1426');
+    ctx.fillStyle = bodyGradient;
+    roundedRect(ctx, obstacle.x, obstacle.y, obstacle.w, obstacle.h, 14);
     ctx.fill();
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(128, 230, 255, 0.34)';
-    ctx.lineWidth = 1.5;
-    roundedRect(ctx, obstacle.x + 8, obstacle.y + 8, obstacle.w - 16, obstacle.h - 16, 6);
+    // 4. Inner plate with bevel
+    ctx.fillStyle = '#16253d';
+    roundedRect(ctx, obstacle.x + 5, obstacle.y + 5, obstacle.w - 10, obstacle.h - 10, 10);
+    ctx.fill();
+
+    // 5. Glossy cartoon specular highlight along top and left
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 12, obstacle.y + obstacle.h - 14);
+    ctx.lineTo(obstacle.x + 12, obstacle.y + 12);
+    ctx.lineTo(obstacle.x + obstacle.w - 14, obstacle.y + 12);
     ctx.stroke();
 
-    ctx.globalAlpha = 0.36;
+    // 6. Central animated cartoon neon conduit
+    const pulse = 0.45 + Math.sin(this.elapsed * 4.2 + obstacle.x * 0.05) * 0.25;
+    ctx.strokeStyle = `${accent.primary}${Math.round(clamp(pulse, 0, 1) * 255).toString(16).padStart(2, '0')}`;
+    ctx.shadowColor = accent.primary;
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + obstacle.w / 2, obstacle.y + 18);
+    ctx.lineTo(obstacle.x + obstacle.w / 2, obstacle.y + obstacle.h - 18);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 7. Corner shiny cartoon bolt rivets
+    ctx.fillStyle = accent.warm;
+    for (const [bx, by] of [
+      [obstacle.x + 10, obstacle.y + 10],
+      [obstacle.x + obstacle.w - 10, obstacle.y + 10],
+      [obstacle.x + obstacle.w - 10, obstacle.y + obstacle.h - 10],
+      [obstacle.x + 10, obstacle.y + obstacle.h - 10],
+    ]) {
+      ctx.beginPath();
+      ctx.arc(bx, by, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 8. Stylized cartoon safety hazard chevrons at the base
+    ctx.globalAlpha = 0.38;
     ctx.fillStyle = '#ffd66b';
-    for (let x = obstacle.x + 12; x < obstacle.x + obstacle.w - 5; x += 22) {
+    for (let x = obstacle.x + 14; x < obstacle.x + obstacle.w - 8; x += 18) {
       ctx.save();
-      ctx.translate(x, obstacle.y + obstacle.h - 9);
-      ctx.rotate(-0.6);
-      ctx.fillRect(-7, -2, 14, 4);
+      ctx.translate(x, obstacle.y + obstacle.h - 11);
+      ctx.rotate(-0.55);
+      ctx.fillRect(-5, -2, 10, 3.5);
       ctx.restore();
     }
+
     ctx.restore();
   }
 
@@ -621,6 +705,7 @@ export class OneBulletWorld2DRuntime extends OneBulletWardenRuntime {
   drawBakedArenaWall(bounds) {
     const tiles = this.arenaTileset;
     if (!tiles?.ready) return false;
+    if (this.preferCartoon2DMap !== false) return false;
 
     const ctx = this.ctx;
     const faceHeight = tiles.wallScreenHeight;

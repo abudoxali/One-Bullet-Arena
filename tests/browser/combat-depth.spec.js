@@ -9,7 +9,7 @@ async function loadGame(page) {
 test('boots combat depth beneath the canonical global UI runtime', async ({ page }) => {
   await loadGame(page);
   const snapshot = await page.evaluate(() => window.__ONE_BULLET_ARENA__.getSnapshot());
-  expect(snapshot.releaseVersion).toBe('3.18.0-kinetic-overhaul');
+  expect(snapshot.releaseVersion).toBe('3.19.0-cartoon-overhaul');
   expect(snapshot.globalUiActive).toBe(true);
   expect(snapshot.combatDepthVersion).toBe('2.9.0-combat');
   expect(snapshot.combatDepthActive).toBe(true);

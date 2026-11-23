@@ -125,16 +125,53 @@ function strokeFeather(ctx, radius, side, color, phase, alpha = 0.48) {
 function drawForwardEye(ctx, radius, style, x = 0.28, alert = 0.35) {
   ctx.save();
   ctx.shadowBlur = 0;
-  ctx.globalCompositeOperation = 'screen';
-  ctx.globalAlpha *= 0.82;
-  ctx.fillStyle = style.accent;
+  ctx.globalCompositeOperation = 'source-over';
+  const eyeRadiusX = Math.max(3.2, radius * 0.22 + alert * 0.4);
+  const eyeRadiusY = Math.max(2.4, radius * 0.15 + alert * 0.25);
+  const eyeX = radius * x;
+
+  // 1. Crisp dark cartoon socket border
+  ctx.fillStyle = '#060c18';
   ctx.beginPath();
-  ctx.ellipse(radius * x, 0, Math.max(2.2, radius * 0.12 + alert), Math.max(1.6, radius * 0.055 + alert * 0.2), 0, 0, Math.PI * 2);
+  ctx.ellipse(eyeX, 0, eyeRadiusX + 1.8, eyeRadiusY + 1.8, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = style.core;
+
+  // 2. Bright clean cartoon sclera
+  ctx.fillStyle = '#f6fbff';
   ctx.beginPath();
-  ctx.ellipse(radius * (x + 0.06), 0, Math.max(1.2, radius * 0.045), Math.max(0.9, radius * 0.03), 0, 0, Math.PI * 2);
+  ctx.ellipse(eyeX, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // 3. Stylized cartoon iris locked directly on forward angle
+  const irisRadiusX = Math.max(2.0, eyeRadiusX * 0.62);
+  const irisRadiusY = Math.max(1.6, eyeRadiusY * 0.62);
+  const pupilOffsetX = eyeRadiusX * 0.28;
+  ctx.fillStyle = style.accent || '#ff2a6d';
+  ctx.beginPath();
+  ctx.ellipse(eyeX + pupilOffsetX, 0, irisRadiusX, irisRadiusY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Deep cartoon pupil
+  ctx.fillStyle = '#080d16';
+  ctx.beginPath();
+  ctx.ellipse(eyeX + pupilOffsetX + 0.4, 0, irisRadiusX * 0.52, irisRadiusY * 0.52, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Glossy cartoon catchlight shine
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(eyeX + pupilOffsetX - irisRadiusX * 0.28, -irisRadiusY * 0.28, Math.max(1.1, eyeRadiusX * 0.2), 0, Math.PI * 2);
+  ctx.fill();
+
+  // 6. Angled aggressive cartoon brow
+  ctx.strokeStyle = '#060c18';
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(eyeX - eyeRadiusX * 0.85, -eyeRadiusY * 0.9);
+  ctx.lineTo(eyeX + eyeRadiusX * 1.05, -eyeRadiusY * 0.45);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -160,6 +197,8 @@ function drawBackSpines(ctx, radius, style, count, phase = 0) {
 export class CinematicCombatArt {
   constructor() {
     this.tokens = cinematicCombatTokens();
+    // Default to true for the rich 2D cartoon animation style with full 360 player tracking
+    this.preferCartoon2D = true;
     // Baked atlases are additive and optional. Each one that loads takes over
     // its archetype; anything unbaked, and everything at all if a load fails,
     // keeps drawing through the procedural path further down this file.
@@ -175,6 +214,7 @@ export class CinematicCombatArt {
   drawBakedEnemy(ctx, runtime, enemy) {
     const atlas = this.atlases?.[enemy?.type];
     if (!atlas?.ready || enemy?.guardian) return false;
+    if (this.preferCartoon2D !== false) return false;
 
     const style = enemyStyle(enemy);
     drawEnemyGroundShadow(ctx, enemy, style, 0.15);
@@ -495,8 +535,8 @@ export class CinematicCombatArt {
     }
     ctx.scale(spawnScale, spawnScale);
     ctx.globalAlpha = enemy.spawnTime > 0 ? 0.45 + spawnScale * 0.55 : 1;
-    ctx.strokeStyle = hit ? '#fff' : style.accent;
-    ctx.lineWidth = enemy.mini ? 1.8 : 2.5;
+    ctx.strokeStyle = hit ? '#ffffff' : '#080f1d';
+    ctx.lineWidth = enemy.mini ? 2.2 : 3.2;
     drawBodyGradient(ctx, radius, hit ? HIT_STYLE : style, heat);
     return radius;
   }
@@ -522,22 +562,59 @@ export class CinematicCombatArt {
     const radius = this.beginEnemy(ctx, runtime, enemy, style, 0.15);
     const toPlayer = directionToPlayer(runtime, enemy);
     ctx.rotate(Math.atan2(toPlayer.y, toPlayer.x));
-    const wing = runtime.reducedMotion ? 0 : Math.sin(enemy.phase * 9.5) * radius * 0.12;
-    drawTeardrop(ctx, radius, enemy.mini ? 1.12 : 1.24, 0.58, 0.52);
+    const wing = runtime.reducedMotion ? 0 : Math.sin(enemy.phase * 9.5) * radius * 0.16;
+
+    // 2D Cartoon Flutter Wings (animated flapping behind body)
+    ctx.save();
+    ctx.fillStyle = style.core;
+    ctx.strokeStyle = '#080f1d';
+    ctx.lineWidth = 2.2;
+    // Upper wing
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.2, -radius * 0.35);
+    ctx.quadraticCurveTo(-radius * 0.7, -radius * 1.15 - wing, -radius * 1.25, -radius * 0.85 - wing);
+    ctx.quadraticCurveTo(-radius * 0.85, -radius * 0.25, -radius * 0.35, -radius * 0.15);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    strokeFeather(ctx, radius, -1, style.core, enemy.phase * 10, 0.62);
-    strokeFeather(ctx, radius, 1, style.core, enemy.phase * 10 + Math.PI, 0.62);
-    ctx.strokeStyle = style.accent;
-    ctx.globalAlpha = 0.62;
+    // Lower wing
     ctx.beginPath();
-    ctx.moveTo(-radius * 0.4, -radius * 0.35 - wing);
-    ctx.quadraticCurveTo(radius * 0.05, -radius * 0.18, radius * 0.62, 0);
-    ctx.moveTo(-radius * 0.4, radius * 0.35 + wing);
-    ctx.quadraticCurveTo(radius * 0.05, radius * 0.18, radius * 0.62, 0);
+    ctx.moveTo(-radius * 0.2, radius * 0.35);
+    ctx.quadraticCurveTo(-radius * 0.7, radius * 1.15 + wing, -radius * 1.25, radius * 0.85 + wing);
+    ctx.quadraticCurveTo(-radius * 0.85, radius * 0.25, -radius * 0.35, radius * 0.15);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
-    this.drawCore(ctx, radius, style, radius * 0.16, 0);
-    drawForwardEye(ctx, radius, style, enemy.mini ? 0.38 : 0.32, enemy.mini ? 0.15 : 0.35);
+    ctx.restore();
+
+    // 2D Cartoon Main Teardrop Body
+    drawTeardrop(ctx, radius, enemy.mini ? 1.15 : 1.26, 0.6, 0.52);
+    ctx.fill();
+    ctx.stroke();
+
+    // Cartoon specular curved shine highlight
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, -radius * 0.12, radius * 0.44, -Math.PI * 0.75, -Math.PI * 0.22);
+    ctx.stroke();
+    ctx.restore();
+
+    // Rear animated cartoon thruster
+    ctx.fillStyle = '#ff9f43';
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.88, -radius * 0.18);
+    ctx.lineTo(-radius * 1.28 - (runtime.reducedMotion ? 0 : Math.sin(runtime.elapsed * 16) * 4), 0);
+    ctx.lineTo(-radius * 0.88, radius * 0.18);
+    ctx.closePath();
+    ctx.fill();
+
+    this.drawCore(ctx, radius, style, radius * 0.14, 0);
+    // Expressive 2D Cartoon Eye looking straight at player
+    drawForwardEye(ctx, radius, style, enemy.mini ? 0.42 : 0.36, enemy.mini ? 0.2 : 0.4);
     ctx.restore();
   }
 
@@ -545,9 +622,11 @@ export class CinematicCombatArt {
     const style = enemyStyle(enemy);
     const radius = this.beginEnemy(ctx, runtime, enemy, style, 0.08);
     const toPlayer = directionToPlayer(runtime, enemy);
-    const breath = runtime.reducedMotion ? 0 : Math.sin(enemy.phase * 3.2) * radius * 0.04;
+    const breath = runtime.reducedMotion ? 0 : Math.sin(enemy.phase * 3.2) * radius * 0.05;
     ctx.rotate(Math.atan2(toPlayer.y, toPlayer.x));
-    ctx.scale(1 + breath / radius, 1 - breath / radius * 0.45);
+    ctx.scale(1 + breath / radius, 1 - (breath / radius) * 0.45);
+
+    // 2D Cartoon Heavy Juggernaut Body
     ctx.beginPath();
     ctx.moveTo(radius * 0.82, -radius * 0.2);
     ctx.bezierCurveTo(radius * 0.7, -radius * 0.9, -radius * 0.38, -radius * 1.08, -radius * 0.92, -radius * 0.52);
@@ -557,34 +636,52 @@ export class CinematicCombatArt {
     ctx.fill();
     ctx.stroke();
 
-    // Heavy reinforced pauldron armor plates
+    // Heavy reinforced cartoon pauldron armor plates
     ctx.fillStyle = '#1c0e08';
-    ctx.strokeStyle = style.core;
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = '#080f1d';
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.rect(-radius * 0.5, -radius * 1.08, radius * 0.55, radius * 0.36);
-    ctx.rect(-radius * 0.5, radius * 0.72, radius * 0.55, radius * 0.36);
+    ctx.rect(-radius * 0.52, -radius * 1.1, radius * 0.58, radius * 0.38);
+    ctx.rect(-radius * 0.52, radius * 0.72, radius * 0.58, radius * 0.38);
     ctx.fill();
     ctx.stroke();
 
-    // Rear exhaust vent ports with heat pulses
-    ctx.fillStyle = '#ff9f43';
-    ctx.fillRect(-radius * 1.1, -radius * 0.26, 4, 3);
-    ctx.fillRect(-radius * 1.1, radius * 0.18, 4, 3);
-
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = style.core;
-    ctx.globalAlpha = 0.52;
-    ctx.lineWidth = 2;
+    // Rivet studs on armor
+    ctx.fillStyle = '#ffaa3b';
     ctx.beginPath();
-    ctx.moveTo(-radius * 0.52, -radius * 0.28);
-    ctx.quadraticCurveTo(0, -radius * 0.56, radius * 0.48, -radius * 0.2);
-    ctx.moveTo(-radius * 0.5, radius * 0.2);
-    ctx.quadraticCurveTo(0, radius * 0.5, radius * 0.56, radius * 0.1);
+    ctx.arc(-radius * 0.4, -radius * 0.92, 2.2, 0, Math.PI * 2);
+    ctx.arc(-radius * 0.15, -radius * 0.92, 2.2, 0, Math.PI * 2);
+    ctx.arc(-radius * 0.4, radius * 0.92, 2.2, 0, Math.PI * 2);
+    ctx.arc(-radius * 0.15, radius * 0.92, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rear cartoon exhaust pipes with heat pulses
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#080f1d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-radius * 1.16, -radius * 0.32, 6, 4);
+    ctx.fillRect(-radius * 1.16, -radius * 0.32, 6, 4);
+    ctx.strokeRect(-radius * 1.16, radius * 0.2, 6, 4);
+    ctx.fillRect(-radius * 1.16, radius * 0.2, 6, 4);
+    // Exhaust flame sparks
+    ctx.fillStyle = '#ff9f43';
+    ctx.fillRect(-radius * 1.26, -radius * 0.3, 3.5, 3);
+    ctx.fillRect(-radius * 1.26, radius * 0.22, 3.5, 3);
+
+    // Front cartoon plate seams
+    ctx.strokeStyle = style.core;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.48, -radius * 0.26);
+    ctx.quadraticCurveTo(0, -radius * 0.52, radius * 0.48, -radius * 0.18);
+    ctx.moveTo(-radius * 0.48, radius * 0.26);
+    ctx.quadraticCurveTo(0, radius * 0.52, radius * 0.48, radius * 0.18);
     ctx.stroke();
+
     drawBackSpines(ctx, radius, style, 4, enemy.phase * 3.1);
     this.drawCore(ctx, radius, style, radius * 0.14, 0, 0.9);
-    drawForwardEye(ctx, radius, style, 0.31, 0.2);
+    // Ferocious cartoon forward eye looking directly at player
+    drawForwardEye(ctx, radius, style, 0.38, 0.3);
     ctx.restore();
   }
 
@@ -599,11 +696,11 @@ export class CinematicCombatArt {
     if ((enemy.shotTelegraph || 0) > 0) {
       const laserTelegraph = clamp01(enemy.shotTelegraph);
       ctx.save();
-      ctx.globalAlpha = 0.35 + laserTelegraph * 0.55;
+      ctx.globalAlpha = 0.4 + laserTelegraph * 0.55;
       ctx.strokeStyle = laserTelegraph > 0.65 ? '#ff3b56' : style.accent;
       ctx.shadowColor = ctx.strokeStyle;
       ctx.shadowBlur = 8;
-      ctx.lineWidth = 1.2 + laserTelegraph * 2.8;
+      ctx.lineWidth = 1.4 + laserTelegraph * 3;
       ctx.setLineDash([14, 7]);
       ctx.beginPath();
       ctx.moveTo(radius * 1.7, 0);
@@ -612,25 +709,33 @@ export class CinematicCombatArt {
       ctx.restore();
     }
 
+    // Aerodynamic cartoon chassis
     drawTeardrop(ctx, radius, 1.48, 0.5, 0.4);
     ctx.fill();
     ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = style.core;
-    ctx.lineWidth = 3;
+
+    // Precision induction barrel
+    ctx.strokeStyle = '#080f1d';
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
     ctx.moveTo(radius * 0.42, 0);
-    ctx.quadraticCurveTo(radius * 1.1, -radius * 0.04, radius * 1.7, 0);
+    ctx.lineTo(radius * 1.8, 0);
+    ctx.stroke();
+    ctx.strokeStyle = style.core;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.5, 0);
+    ctx.lineTo(radius * 1.75, 0);
     ctx.stroke();
 
     // Precision induction barrel coils
     ctx.strokeStyle = style.accent;
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(radius * 0.8, -radius * 0.15);
-    ctx.lineTo(radius * 0.8, radius * 0.15);
-    ctx.moveTo(radius * 1.2, -radius * 0.12);
-    ctx.lineTo(radius * 1.2, radius * 0.12);
+    ctx.moveTo(radius * 0.82, -radius * 0.16);
+    ctx.lineTo(radius * 0.82, radius * 0.16);
+    ctx.moveTo(radius * 1.25, -radius * 0.14);
+    ctx.lineTo(radius * 1.25, radius * 0.14);
     ctx.stroke();
 
     ctx.globalAlpha = 0.55 + clamp01(enemy.shotTelegraph) * 0.35;
@@ -642,7 +747,8 @@ export class CinematicCombatArt {
     ctx.quadraticCurveTo(0, radius * 0.12, radius * 0.56, radius * 0.24);
     ctx.stroke();
     this.drawCore(ctx, radius, style, radius * 0.25, 0);
-    drawForwardEye(ctx, radius, style, 0.5, 0.55);
+    // Sniper optic cartoon eye looking directly along barrel at player
+    drawForwardEye(ctx, radius, style, 0.48, 0.55);
     ctx.restore();
   }
 
@@ -653,6 +759,29 @@ export class CinematicCombatArt {
     const direction = lockedChargeDirection(enemy) || directionToPlayer(runtime, enemy);
     ctx.rotate(Math.atan2(direction.y, direction.x));
     ctx.scale(1 + heat * 0.18, 1 - heat * 0.08);
+
+    // Aggressive 2D cartoon curved horns
+    ctx.fillStyle = '#ff9f43';
+    ctx.strokeStyle = '#080f1d';
+    ctx.lineWidth = 2.4;
+    // Top horn
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.3, -radius * 0.5);
+    ctx.quadraticCurveTo(radius * 0.8, -radius * 0.95, radius * 1.25, -radius * 0.7);
+    ctx.quadraticCurveTo(radius * 0.7, -radius * 0.4, radius * 0.2, -radius * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Bottom horn
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.3, radius * 0.5);
+    ctx.quadraticCurveTo(radius * 0.8, radius * 0.95, radius * 1.25, radius * 0.7);
+    ctx.quadraticCurveTo(radius * 0.7, radius * 0.4, radius * 0.2, radius * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Cartoon ram body
     drawTeardrop(ctx, radius, 1.42, 0.7, 0.54);
     ctx.fill();
     ctx.stroke();
@@ -666,27 +795,22 @@ export class CinematicCombatArt {
     ctx.quadraticCurveTo(radius * 1.24, radius * 0.28, radius * 1.52, radius * 0.08);
     ctx.stroke();
 
-    // Blazing thruster plume and dynamic embers during windup
+    // Blazing thruster plume during charge windup
     if (heat > 0.05) {
-      ctx.globalAlpha = 0.36 + heat * 0.38;
-      ctx.strokeStyle = style.core;
-      ctx.lineWidth = 5;
+      ctx.globalAlpha = 0.5 + heat * 0.45;
+      ctx.fillStyle = '#ff3838';
+      ctx.strokeStyle = '#ffb300';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(-radius * 1.25, 0);
-      ctx.quadraticCurveTo(-radius * 1.85, Math.sin(runtime.elapsed * 18) * radius * 0.26, -radius * 2.36, 0);
-      ctx.stroke();
-      // Secondary twin flame jets
-      ctx.strokeStyle = '#ffd86b';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(-radius * 1.1, -radius * 0.25);
-      ctx.lineTo(-radius * 1.6 - heat * radius * 0.6, -radius * 0.35);
-      ctx.moveTo(-radius * 1.1, radius * 0.25);
-      ctx.lineTo(-radius * 1.6 - heat * radius * 0.6, radius * 0.35);
+      ctx.moveTo(-radius * 1.15, -radius * 0.3);
+      ctx.quadraticCurveTo(-radius * 1.9 - heat * radius * 0.8, 0, -radius * 1.15, radius * 0.3);
+      ctx.closePath();
+      ctx.fill();
       ctx.stroke();
     }
     this.drawCore(ctx, radius, style, radius * 0.18, 0);
-    drawForwardEye(ctx, radius, style, 0.38, 0.45 + heat * 0.45);
+    // Fierce cartoon eyes locked onto charge target
+    drawForwardEye(ctx, radius, style, 0.42, 0.45 + heat * 0.45);
     ctx.restore();
   }
 
@@ -694,15 +818,27 @@ export class CinematicCombatArt {
     const style = enemyStyle(enemy);
     const radius = this.beginEnemy(ctx, runtime, enemy, style, 0.2);
     const toPlayer = directionToPlayer(runtime, enemy);
-    const wobble = runtime.reducedMotion ? 0 : Math.sin(enemy.phase * 8.8) * radius * 0.08;
+    const wobble = runtime.reducedMotion ? 0 : Math.sin(enemy.phase * 8.8) * radius * 0.09;
     ctx.rotate(Math.atan2(toPlayer.y, toPlayer.x) + Math.sin(enemy.phase * 2.2) * 0.18);
+
+    // 2D Cartoon Bouncy Slime contour
     ctx.beginPath();
-    ctx.moveTo(radius * 0.9, 0);
-    ctx.bezierCurveTo(radius * 0.72, -radius * 0.78, radius * 0.05 + wobble, -radius * 1.05, -radius * 0.36, -radius * 0.52);
-    ctx.bezierCurveTo(-radius * 0.92, -radius * 0.86, -radius * 1.28, -radius * 0.16, -radius * 0.82, radius * 0.24);
-    ctx.bezierCurveTo(-radius * 0.48, radius * 0.96, radius * 0.22 - wobble, radius * 0.84, radius * 0.9, 0);
+    ctx.moveTo(radius * 0.95, 0);
+    ctx.bezierCurveTo(radius * 0.72, -radius * 0.78 - wobble, radius * 0.05 + wobble, -radius * 1.08, -radius * 0.36, -radius * 0.52);
+    ctx.bezierCurveTo(-radius * 0.95, -radius * 0.88, -radius * 1.28, -radius * 0.16, -radius * 0.82, radius * 0.24);
+    ctx.bezierCurveTo(-radius * 0.48, radius * 0.98 + wobble, radius * 0.22 - wobble, radius * 0.86, radius * 0.95, 0);
     ctx.fill();
     ctx.stroke();
+
+    // Glossy cartoon slime sheen
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(radius * 0.15, -radius * 0.45, radius * 0.25, radius * 0.12, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
     ctx.shadowBlur = 0;
     ctx.strokeStyle = style.accent;
     ctx.globalAlpha = 0.76;
@@ -719,6 +855,8 @@ export class CinematicCombatArt {
     this.drawCore(ctx, radius, style, -radius * 0.18 - mitosisShift, -radius * 0.14, 0.86);
     this.drawCore(ctx, radius, style, radius * 0.22 + mitosisShift, radius * 0.16, 0.78);
     drawBackSpines(ctx, radius, style, 5, enemy.phase * 4.4);
+    // Expressive forward cartoon eye
+    drawForwardEye(ctx, radius, style, 0.38, 0.35);
     ctx.restore();
   }
 

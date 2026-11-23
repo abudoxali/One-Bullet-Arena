@@ -10,7 +10,7 @@ import { DomUiController } from '../ui/dom-ui.js';
 import { installDomPerformanceBridge } from '../ui/dom-performance-bridge.js';
 import { OneBulletProductionArtRuntime } from './production-art-runtime.js';
 
-export const GLOBAL_UI_RUNTIME_VERSION = '3.18.0-kinetic-overhaul';
+export const GLOBAL_UI_RUNTIME_VERSION = '3.19.0-cartoon-overhaul';
 export const GLOBAL_UI_REVISION = 'smooth-fixedstep-presentation-v1';
 export const UI_REPAIR_RUNTIME_VERSION = GLOBAL_UI_RUNTIME_VERSION;
 export const UI_REPAIR_REVISION = GLOBAL_UI_REVISION;

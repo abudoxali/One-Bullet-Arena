@@ -1,5 +1,5 @@
 (function initializeReleaseConfig(root) {
-  const version = '3.18.0-kinetic-overhaul';
+  const version = '3.19.0-cartoon-overhaul';
   const release = Object.freeze({
     version,
     label: `v${version}`,

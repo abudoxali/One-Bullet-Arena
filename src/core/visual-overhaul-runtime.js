@@ -180,8 +180,8 @@ export class OneBulletVisualOverhaulRuntime extends OneBulletWorld2DRuntime {
       ctx.translate(x, y);
       ctx.rotate(rot);
       ctx.scale(scale, scale * (0.72 + (index % 2) * 0.24));
-      ctx.globalAlpha = 0.08 + (index % 3) * 0.025;
-      ctx.fillStyle = index % 2 ? 'rgba(255, 188, 105, 0.24)' : 'rgba(1, 6, 16, 0.72)';
+      ctx.globalAlpha = 0.03 + (index % 3) * 0.015;
+      ctx.fillStyle = index % 2 ? 'rgba(255, 200, 120, 0.2)' : 'rgba(100, 160, 240, 0.15)';
       ctx.beginPath();
       ctx.moveTo(-58, -7);
       ctx.bezierCurveTo(-36, -25, -4, -19, 22, -14);
